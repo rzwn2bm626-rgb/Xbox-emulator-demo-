@@ -1,0 +1,711 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Dynamic Interactive Dashboard</title>
+    <style>
+        /* ==========================================
+           GUIDE MENU VARIABLES (UNTOUCHED)
+           ========================================== */
+        :root {
+            --body-bg-color: #0b0f0d; 
+            --sidebar-bg-color: #151515; 
+            --bottom-nav-bg-color: #1c1c1c; 
+            --bottom-btn-border: #262626; 
+            --bottom-nav-top-border: #2d2d2d; 
+            --accent-box-color: #2d2d2d; 
+            --item-hover-bg: #222222; 
+            --divider-line-color: #282828; 
+            --text-primary-color: #ffffff; 
+
+            --tile-height-padding: 18px; 
+            --bottom-btn-height: 68px; 
+            --sidebar-width: 380px; 
+        }
+
+        /* ==========================================
+           CORE SITE LAYOUT
+           ========================================== */
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            color: #ffffff;
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+            justify-content: space-between;
+            padding: 30px 40px;
+            overflow-x: hidden;
+            position: relative;
+            transition: padding-top 0.3s ease; 
+
+            /* Global Background */
+            background-color: #121212; 
+            background-image: url('site-background.png'); 
+            background-size: cover;
+            background-position: center;
+            background-repeat: no-repeat;
+            background-attachment: fixed;
+        }
+
+        /* ==========================================
+           SLIDEOUT XBOX GUIDE MENU OVERLAY
+           ========================================== */
+        .xbox-guide-container {
+            width: var(--sidebar-width);
+            background-color: var(--sidebar-bg-color);
+            padding: 15px 0 0 0;
+            box-shadow: 5px 0 30px rgba(0,0,0,0.8);
+            display: flex;
+            flex-direction: column;
+            height: 100vh;
+            border-radius: 0px; 
+
+            position: fixed;
+            top: 0;
+            left: calc(-1 * var(--sidebar-width)); 
+            z-index: 2000;
+            transition: left 0.3s cubic-bezier(0.25, 1, 0.5, 1);
+        }
+
+        .xbox-guide-container.open {
+            left: 0;
+        }
+
+        /* Top Navigation Row inside Guide */
+        .top-nav-guide {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 0 15px 10px 15px;
+        }
+
+        .nav-icon {
+            cursor: pointer;
+            padding: 8px;
+            position: relative;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            width: 42px;
+            height: 42px;
+            border-radius: 50%; 
+            border: 2px solid transparent;
+            transition: background-color 0.1s;
+        }
+
+        .nav-icon.active-tab {
+            background-color: var(--accent-box-color);
+        }
+
+        .nav-icon:hover {
+            background-color: var(--item-hover-bg);
+        }
+
+        .ui-png-logo {
+            width: 24px;
+            height: 24px;
+            object-fit: cover;
+            border-radius: 50%; 
+            opacity: 0.5; 
+            transition: opacity 0.15s;
+        }
+
+        .nav-icon:hover .ui-png-logo,
+        .nav-icon.active-tab .ui-png-logo,
+        .bottom-btn.focused .ui-png-logo {
+            opacity: 1; 
+        }
+
+        .menu-item-icon {
+            width: 24px;       
+            height: 24px;      
+            margin-right: 15px;
+            object-fit: contain;
+            border-radius: 50%; 
+        }
+
+        .circle-profile {
+            width: 32px;
+            height: 32px;
+            border-radius: 50%; 
+            object-fit: cover;
+            border: 1px solid rgba(255,255,255,0.2);
+        }
+
+        /* --- DYNAMIC TAB VIEWS --- */
+        .tab-content-panel {
+            display: none; /* Controlled by Javascript */
+            padding: 0 15px;
+            padding-top: 15px;
+            flex-grow: 1; 
+            overflow-y: auto;
+        }
+
+        .tab-content-panel.active-view {
+            display: block;
+        }
+
+        /* Sidebar Title Context Header */
+        .tab-view-title {
+            font-size: 1.1rem;
+            font-weight: bold;
+            margin-bottom: 15px;
+            padding-left: 5px;
+            color: #aaaaaa;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+
+        .menu-item {
+            display: flex;
+            align-items: center;
+            padding: var(--tile-height-padding) 12px; 
+            margin-bottom: 0px; 
+            font-weight: 600;
+            font-size: 0.95rem;
+            cursor: pointer;
+            border: 2px solid transparent;
+            border-radius: 0px; 
+            color: var(--text-primary-color);
+            transition: background-color 0.1s;
+        }
+
+        .menu-item:hover {
+            background-color: var(--item-hover-bg);
+        }
+
+        .activity-details {
+            flex-grow: 1;
+            display: flex;
+            flex-direction: column;
+        }
+
+        .activity-title {
+            font-size: 0.95rem;
+            font-weight: 500;
+        }
+
+        .activity-subtitle {
+            font-size: 0.8rem;
+            color: #888888;
+            margin-top: 2px;
+        }
+
+        .menu-item.focused, .bottom-btn.focused {
+            background-color: var(--accent-box-color) !important;
+            border: 2px solid transparent !important;
+            box-shadow: none !important;
+        }
+
+        .divider {
+            border: 0;
+            height: 1px;
+            background: var(--divider-line-color);
+            margin: 15px 0;
+        }
+
+        .bottom-nav-guide {
+            display: grid;
+            grid-template-columns: repeat(5, 1fr);
+            background-color: var(--bottom-nav-bg-color); 
+            margin-top: auto;
+            border-top: 1px solid var(--bottom-nav-top-border); 
+        }
+
+        .bottom-btn {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            height: var(--bottom-btn-height); 
+            cursor: pointer;
+            border: 1px solid var(--bottom-btn-border);
+            border-radius: 0px; 
+            transition: background-color 0.1s;
+        }
+
+        .bottom-btn:hover {
+            background-color: var(--item-hover-bg);
+        }
+
+        /* ==========================================
+           MAIN SITE HEADER & TOP UI LOGOS
+           ========================================== */
+        #warning-banner {
+            display: none; 
+            width: 100%;
+            background-color: #d83b01; 
+            color: white;
+            padding: 14px 50px 14px 20px; 
+            font-weight: 600;
+            font-size: 0.95rem;
+            position: fixed;
+            top: 0;
+            left: 0;
+            z-index: 3000; 
+            box-shadow: 0 4px 15px rgba(0,0,0,0.5);
+            text-align: left;
+        }
+
+        .close-banner-btn {
+            position: absolute;
+            right: 20px;
+            top: 50%;
+            transform: translateY(-50%);
+            background: none;
+            border: none;
+            color: white;
+            font-size: 20px;
+            font-weight: bold;
+            cursor: pointer;
+            line-height: 1;
+            opacity: 0.8;
+            transition: opacity 0.2s ease, transform 0.2s ease;
+        }
+
+        .close-banner-btn:hover { opacity: 1; transform: translateY(-50%) scale(1.2); }
+
+        header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            width: 100%;
+            z-index: 1000;
+        }
+
+        .channel-logo-container {
+            width: 60px;
+            height: 60px;
+            border-radius: 50%; 
+            background-color: #2a2a2a; 
+            overflow: hidden; 
+            cursor: pointer;
+            border: none; 
+            transition: transform 0.3s ease;
+            z-index: 2500; 
+        }
+        .channel-logo-container:hover { transform: scale(1.05); }
+        .channel-logo-container img { width: 100%; height: 100%; object-fit: cover; }
+
+        .top-nav-site {
+            display: flex;
+            gap: 20px;
+            background: none;
+            padding: 0;
+            border: none;
+            align-items: center;
+        }
+
+        .nav-icon-site {
+            width: 32px;
+            height: 32px;
+            border-radius: 50%; 
+            cursor: pointer;
+            opacity: 0.7;
+            background-color: #2a2a2a;
+            overflow: hidden;
+            border: none; 
+            transition: opacity 0.2s ease, transform 0.2s ease;
+        }
+        .nav-icon-site:hover { opacity: 1; transform: scale(1.1); }
+        .nav-icon-site img { width: 100%; height: 100%; object-fit: cover; }
+
+        .time-display {
+            font-size: 1.2rem;
+            color: #ffffff;
+            font-weight: 600;
+            background: none;
+            padding: 0;
+            border: none;
+        }
+
+        /* ==========================================
+           MAIN LOWER TILES / CARDS GRID
+           ========================================== */
+        .dashboard-container {
+            display: flex;
+            flex-direction: column;
+            gap: 25px;
+            width: 100%;
+            max-width: 1400px;
+            margin: 0 auto;
+            margin-top: auto; 
+            padding-top: 40px;
+        }
+
+        .card-row {
+            display: flex;
+            gap: 20px;
+            align-items: flex-end; 
+            width: 100%;
+            height: 260px; 
+        }
+
+        .card {
+            height: 180px;
+            flex: 1 1 150px; 
+            border-radius: 0; 
+            cursor: pointer;
+            border: none; 
+            background-color: #2a2a2a; 
+            background-size: cover;
+            background-position: center;
+            background-repeat: no-repeat;
+            transition: flex-grow 0.4s cubic-bezier(0.25, 1, 0.5, 1), height 0.4s cubic-bezier(0.25, 1, 0.5, 1), transform 0.3s ease;
+        }
+
+        .card.card-1 { background-image: url('card1.png'); }
+        .card.card-2 { background-image: url('card2.png'); }
+        .card.card-3 { background-image: url('card3.png'); }
+        .card.card-4 { background-image: url('card4.png'); }
+        .card.card-5 { background-image: url('card5.png'); }
+
+        .card:hover, .card.featured { z-index: 10; box-shadow: 0 10px 25px rgba(0,0,0,0.6); }
+        .card.featured { height: 260px; flex-grow: 2.5; }
+
+        .tile-row {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 20px;
+        }
+
+        .tile {
+            height: 120px;
+            border-radius: 0; 
+            cursor: pointer;
+            border: none; 
+            background-color: #1e1e1e;
+            background-size: cover;
+            background-position: center;
+            background-repeat: no-repeat;
+            transition: transform 0.3s ease;
+        }
+
+        .tile.tile-left { background-image: url('tile-left.png'); }
+        .tile.tile-center { background-image: url('tile-center.png'); }
+        .tile.tile-right { background-image: url('tile-right.png'); }
+        .tile:hover { transform: translateY(-3px); box-shadow: 0 8px 20px rgba(0,0,0,0.6); }
+
+        /* Responsive Breakpoints */
+        @media (max-width: 1024px) {
+            body { overflow-y: auto; }
+            .dashboard-container { margin-top: 40px; }
+            .card-row { height: auto; flex-direction: row; flex-wrap: wrap; align-items: stretch; }
+            .card { height: 150px; flex: 1 1 calc(50% - 10px); }
+            .card.featured { height: 180px; flex: 1 1 100%; }
+            .card:hover, .tile:hover { transform: none !important; box-shadow: none !important; }
+            .card.featured { box-shadow: 0 8px 16px rgba(0,0,0,0.5) !important; }
+        }
+
+        @media (max-width: 600px) {
+            header { flex-direction: column; gap: 15px; }
+            .card-row { flex-direction: column; }
+            .card { flex: none; height: 120px; }
+            .card.featured { height: 160px; }
+            .tile-row { grid-template-columns: 1fr; }
+            .tile { height: 100px; }
+        }
+    </style>
+</head>
+<body>
+
+    <div id="warning-banner">
+        <span id="warning-text"></span>
+        <button class="close-banner-btn" onclick="dismissBanner()">×</button>
+    </div>
+
+    <div class="xbox-guide-container" id="guideMenu">
+        
+        <div class="top-nav-guide">
+            <div class="nav-icon active-tab" data-target="panel-home">
+                <img class="ui-png-logo" src="https://img.icons8.com/?size=100&id=qd31Kv1WcXAH&format=png&color=FFFFFF" alt="Xbox logo">
+            </div>
+            <div class="nav-icon" data-target="panel-friends">
+                <img class="ui-png-logo" src="https://img.icons8.com/?size=100&id=pfTokzw9oCsU&format=png&color=FFFFFF" alt="Friends logo">
+            </div>
+            <div class="nav-icon" data-target="panel-messages">
+                <img class="ui-png-logo" src="https://img.icons8.com/?size=100&id=61637&format=png&color=FFFFFF" alt="Messages logo">
+            </div>
+            <div class="nav-icon" data-target="panel-trophies">
+                <img class="ui-png-logo" src="https://img.icons8.com/?size=100&id=Bg9xK6WM86bv&format=png&color=FFFFFF" alt="Trophy logo">
+            </div>
+            <div class="nav-icon" data-target="panel-share">
+                <img class="ui-png-logo" src="https://img.icons8.com/?size=100&id=MIoOlVf8yjsm&format=png&color=FFFFFF" alt="Share logo">
+            </div>
+            <div class="nav-icon" data-target="panel-profile">
+                <img class="circle-profile" src="https://img.icons8.com/?size=100&id=85147&format=png&color=FFFFFF" alt="Profile pic">
+            </div>
+        </div>
+
+        <div class="tab-content-panel active-view" id="panel-home">
+            <div class="menu-item focused" data-type="tile">
+                <img class="menu-item-icon" src="https://img.icons8.com/?size=100&id=84005&format=png&color=FFFFFF" alt="Home symbol">
+                <div class="activity-details">
+                    <div class="activity-title">Home</div>
+                </div>
+            </div>
+            <div class="menu-item" data-type="tile">
+                <img class="menu-item-icon" src="https://img.icons8.com/?size=100&id=61986&format=png&color=FFFFFF" alt="Library symbol">
+                <div class="activity-details">
+                    <div class="activity-title">My games & apps</div>
+                </div>
+            </div>
+            <hr class="divider">
+        </div>
+
+        <div class="tab-content-panel" id="panel-friends">
+            <div class="tab-view-title">Friends & Community</div>
+            <div class="menu-item" data-type="tile">
+                <img class="menu-item-icon" src="https://img.icons8.com/?size=100&id=85147&format=png&color=FFFFFF" alt="User icon">
+                <div class="activity-details">
+                    <div class="activity-title">Player 1</div>
+                    <div class="activity-subtitle">Online - Playing Halo</div>
+                </div>
+            </div>
+            <div class="menu-item" data-type="tile">
+                <img class="menu-item-icon" src="https://img.icons8.com/?size=100&id=85147&format=png&color=FFFFFF" alt="User icon">
+                <div class="activity-details">
+                    <div class="activity-title">Player 2</div>
+                    <div class="activity-subtitle">Offline - Last seen 2h ago</div>
+                </div>
+            </div>
+        </div>
+
+        <div class="tab-content-panel" id="panel-messages">
+            <div class="tab-view-title">Chats</div>
+            <div class="menu-item" data-type="tile">
+                <div class="activity-details">
+                    <div class="activity-title">Party Chat</div>
+                    <div class="activity-subtitle">Start a party panel</div>
+                </div>
+            </div>
+            <div class="menu-item" data-type="tile">
+                <div class="activity-details">
+                    <div class="activity-title">Direct Messages</div>
+                    <div class="activity-subtitle">No unread messages</div>
+                </div>
+            </div>
+        </div>
+
+        <div class="tab-content-panel" id="panel-trophies">
+            <div class="tab-view-title">Achievements</div>
+            <div class="menu-item" data-type="tile">
+                <div class="activity-details">
+                    <div class="activity-title">Recent Achievements</div>
+                    <div class="activity-subtitle">4,500 Gamerscore</div>
+                </div>
+            </div>
+        </div>
+
+        <div class="tab-content-panel" id="panel-share">
+            <div class="tab-view-title">Capture & Share</div>
+            
+            <div class="menu-item" data-type="tile">
+                <img class="menu-item-icon" src="https://img.icons8.com/?size=100&id=7880&format=png&color=FFFFFF" alt="Record icon">
+                <div class="activity-details">
+                    <div class="activity-title">Record what happened</div>
+                </div>
+            </div>
+            
+            <div class="menu-item" data-type="tile">
+                <img class="menu-item-icon" src="https://img.icons8.com/?size=100&id=11487&format=png&color=FFFFFF" alt="Video icon">
+                <div class="activity-details">
+                    <div class="activity-title">Start recording</div>
+                </div>
+            </div>
+            
+            <div class="menu-item" data-type="tile">
+                <img class="menu-item-icon" src="https://img.icons8.com/?size=100&id=59750&format=png&color=FFFFFF" alt="Screenshot icon">
+                <div class="activity-details">
+                    <div class="activity-title">Capture screenshot</div>
+                </div>
+            </div>
+            
+            <div class="menu-item" data-type="tile">
+                <img class="menu-item-icon" src="https://img.icons8.com/?size=100&id=84411&format=png&color=FFFFFF" alt="Library icon">
+                <div class="activity-details">
+                    <div class="activity-title">Share last picture / capture</div>
+                </div>
+            </div>
+
+            <hr class="divider">
+
+            <div class="menu-item" data-type="tile">
+                <img class="menu-item-icon" src="https://img.icons8.com/?size=100&id=82531&format=png&color=FFFFFF" alt="Settings PNG icon">
+                <div class="activity-details">
+                    <div class="activity-title">Capture settings</div>
+                </div>
+            </div>
+        </div>
+
+        <div class="tab-content-panel" id="panel-profile">
+            <div class="tab-view-title">Profile & System</div>
+            <div class="menu-item" data-type="tile">
+                <div class="activity-details">
+                    <div class="activity-title">Sign Out</div>
+                </div>
+            </div>
+        </div>
+
+        <div class="bottom-nav-guide">
+            <div class="bottom-btn" data-type="tile">
+                <img class="ui-png-logo" src="https://img.icons8.com/?size=100&id=84025&format=png&color=FFFFFF" alt="Notification bell">
+            </div>
+            <div class="bottom-btn" data-type="tile">
+                <img class="ui-png-logo" src="https://img.icons8.com/?size=100&id=12504&format=png&color=FFFFFF" alt="Game Pass icon">
+            </div>
+            <div class="bottom-btn" data-type="tile">
+                <img class="ui-png-logo" src="https://img.icons8.com/?size=100&id=W5ufHFPFwaDN&format=png&color=FFFFFF" alt="Store bag">
+            </div>
+            <div class="bottom-btn" data-type="tile">
+                <img class="ui-png-logo" src="https://img.icons8.com/?size=100&id=7695&format=png&color=FFFFFF" alt="Search glass">
+            </div>
+            <div class="bottom-btn" data-type="tile">
+                <img class="ui-png-logo" src="https://img.icons8.com/?size=100&id=22778&format=png&color=FFFFFF" alt="Speaker icon">
+            </div>
+        </div>
+    </div>
+
+    <header id="site-header">
+        <div class="channel-logo-container" id="logoTrigger">
+            <img src="channel-logo.png" alt="Logo">
+        </div>
+        
+        <nav class="top-nav-site">
+            <div class="nav-icon-site"><img src="nav-left-new.png" alt="New Left"></div>
+            <div class="nav-icon-site"><img src="nav-icon1.png" alt="Nav 1"></div>
+            <div class="nav-icon-site"><img src="nav-icon2.png" alt="Nav 2"></div>
+            <div class="nav-icon-site"><img src="nav-icon3.png" alt="Nav 3"></div>
+            <div class="nav-icon-site"><img src="nav-right-new.png" alt="New Right"></div>
+        </nav>
+        
+        <div class="time-display" id="clock">12:00 PM</div>
+    </header>
+
+    <main class="dashboard-container">
+        <div class="card-row">
+            <div class="card card-1 featured"></div>
+            <div class="card card-2"></div>
+            <div class="card card-3"></div>
+            <div class="card card-4"></div>
+            <div class="card card-5"></div>
+        </div>
+
+        <div class="tile-row">
+            <div class="tile tile-left"></div>
+            <div class="tile tile-center"></div>
+            <div class="tile tile-right"></div>
+        </div>
+    </main>
+
+    <script>
+        // Toggle slide-out guide menu visibility cleanly
+        const logoTrigger = document.getElementById('logoTrigger');
+        const guideMenu = document.getElementById('guideMenu');
+
+        logoTrigger.addEventListener('click', (e) => {
+            e.stopPropagation(); 
+            guideMenu.classList.toggle('open');
+        });
+
+        document.addEventListener('click', (e) => {
+            if (!guideMenu.contains(e.target) && e.target !== logoTrigger) {
+                guideMenu.classList.remove('open');
+            }
+        });
+
+        // Dynamic Sub-Tab Switching Logic inside the Guide Sidebar
+        const guideTabs = document.querySelectorAll('.top-nav-guide .nav-icon');
+        const contentPanels = document.querySelectorAll('.tab-content-panel');
+
+        guideTabs.forEach(tab => {
+            tab.addEventListener('click', (e) => {
+                e.stopPropagation(); // Keep panel from closing when tabbing
+
+                // Set active visual tab highlight
+                guideTabs.forEach(t => t.classList.remove('active-tab'));
+                tab.classList.add('active-tab');
+
+                // Swap out content panel screens
+                const targetPanelId = tab.getAttribute('data-target');
+                contentPanels.forEach(panel => panel.classList.remove('active-view'));
+                document.getElementById(targetPanelId).classList.add('active-view');
+            });
+        });
+
+        // Core Layout Item Focus Event Handling
+        const cards = document.querySelectorAll('.card');
+        cards.forEach(card => {
+            card.addEventListener('click', () => {
+                document.querySelector('.card.featured')?.classList.remove('featured');
+                card.classList.add('featured');
+            });
+        });
+
+        // General focus management inside sub-menus
+        const tiles = document.querySelectorAll('[data-type="tile"]');
+        tiles.forEach(tile => {
+            tile.addEventListener('click', (e) => {
+                e.stopPropagation();
+                tiles.forEach(t => t.classList.remove('focused'));
+                tile.classList.add('focused');
+            });
+        });
+
+        // Device Notification Handlers
+        let isBannerDismissed = false; 
+        function detectDevice() {
+            if (isBannerDismissed) return;
+            const width = window.innerWidth;
+            const userAgent = navigator.userAgent.toLowerCase();
+            const banner = document.getElementById('warning-banner');
+            const warningText = document.getElementById('warning-text');
+
+            if (userAgent.includes('ipad') || (navigator.maxTouchPoints > 1 && width <= 1024 && width > 600)) {
+                warningText.textContent = "⚠️ iPad Mode: Not fully supported but still supported. Box swapping works, outlines disabled.";
+                banner.style.display = "block";
+                document.body.style.paddingTop = (banner.offsetHeight + 10) + "px";
+            } 
+            else if (width <= 600 || userAgent.includes('iphone') || userAgent.includes('android')) {
+                warningText.textContent = "⚠️ Mobile Mode: Not that supported, not about much supported. Stacking items vertically.";
+                banner.style.display = "block";
+                document.body.style.paddingTop = (banner.offsetHeight + 10) + "px";
+            } 
+            else {
+                warningText.textContent = "💻 Desktop Mode: Fully supported. Perfect alignment and smooth layout resizing active!";
+                banner.style.display = "block";
+                banner.style.backgroundColor = "#107c41"; 
+                document.body.style.paddingTop = (banner.offsetHeight + 10) + "px";
+            }
+        }
+
+        function dismissBanner() {
+            const banner = document.getElementById('warning-banner');
+            banner.style.display = "none";
+            document.body.style.paddingTop = "30px"; 
+            isBannerDismissed = true; 
+        }
+
+        window.addEventListener('resize', detectDevice);
+        window.addEventListener('load', detectDevice);
+
+        // UI Live Clock Updater
+        function updateClock() {
+            const now = new Date();
+            let hours = now.getHours();
+            const minutes = String(now.getMinutes()).padStart(2, '0');
+            const ampm = hours >= 12 ? 'PM' : 'AM';
+            hours = hours % 12 || 12;
+            document.getElementById('clock').textContent = `${hours}:${minutes} ${ampm}`;
+        }
+        setInterval(updateClock, 1000);
+        updateClock();
+    </script>
+</body>
+</html>
